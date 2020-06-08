@@ -22,25 +22,14 @@ function runServer() {
 
     const contents = await Promise.all(promises)
 
-    res.send(HTMLFormat(contents));
+    res.send(HTMLFormat(contents, dir));
   });
 
-  app.get('/:blog', async (req, res) => {
-    const blog = req.params.blog;
-    const extension = blog.split('.')[1];
-
-    const promises = [];
-    if (extension) {
-      promises.push(fs.promises.readFile('./blog/blogs/' + blog, 'utf8'));
-    } else {
-      // Try opening both HTML and .md files
-      promises.push(fs.promises.readFile('./blog/blogs/' + blog + '.html', 'utf8'));
-      promises.push(fs.promises.readFile('./blog/blogs/' + blog + '.md', 'utf8'));
-    }
-
+  app.get('/:filename', async (req, res) => {
+    const filename = req.params.filename;
     try {
-      const contents = await Promise.any(promises);
-      res.send(HTMLFormat([contents]));
+      contents = await fs.promises.readFile('./blog/blogs/' + filename, 'utf8');
+      res.send(HTMLFormat([contents], [filename]));
     } catch (e) {
       res.sendStatus(404);
     }
@@ -88,11 +77,11 @@ async function poll() {
 }
 
 
-function HTMLFormat(posts) {
+function HTMLFormat(posts, filenames) {
   let html = "<!DOCTYPE html><html><body>";
 
   posts.forEach((post, i) => {
-    html += formatFile(post);
+    html += formatFile(post, filenames[i]);
   });
 
   html += "</body>";
@@ -101,34 +90,10 @@ function HTMLFormat(posts) {
   return html;
 }
 
-function formatFile(contents) {
-  try {
+function formatFile(contents, filename) {
+  if (filename.substring(filename.length - 3) === '.md') {
     return markdown.toHTML(contents);
-  } catch {
+  } else if (filename.substring(filename.length - 5) === '.html') {
     return contents;
   }
-}
-
-// ----------------------------------------------------------------
-// Shims
-// ----------------------------------------------------------------
-Promise.any = function (promises) {
-  return new Promise((resolve, reject) => {
-    let rejectCount = 0;
-    let resolved = false;
-    for (let i=0; i<promises.length; i++) {
-      const promise = promises[i];
-      promise.then((result) => {
-        if (!resolved) {
-          resolved = true;
-          resolve(result);
-        }
-      }).catch((e) => {
-        rejectCount = rejectCount + 1;
-        if (rejectCount === promises.length) {
-          reject(e)
-        }
-      });
-    }
-  });
 }
