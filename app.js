@@ -2,43 +2,74 @@ const markdown = require('markdown').markdown;
 const express  = require('express');
 const app      = express();
 const port     = 3000;
-const git      = require('nodegit');
-const fs       = require('fs');
+const git      = require('isomorphic-git');
+const http     = require('isomorphic-git/http/node')
+const fs       = require('fs')
 
+let lastPull;
 
-cloneRepository().then((repo) => {
-  runServer()
-});
-
-async function cloneRepository(url, path) {
-  try {
-    await git.Clone('https://github.com/siriusastrebe/gitblog/', './blog');
-  } catch {
-  } finally {
-    const repo = await git.Repository.open('./blog');
-console.log('zope', repo);
-  }
-}
-
+clone().then(pull).then(runServer);
 
 function runServer() {
   app.get('/', async (req, res) => {
-    console.log('yo!');
+    await poll()
+    const dir = await fs.promises.readdir('./blog/blogs/');
+
+    const promises = dir.map(async (d) => {
+      return fs.promises.readFile('./blog/blogs/' + d, 'utf8');
+    });
+
+    const contents = await Promise.all(promises)
+
+    res.send(HTMLFormat(contents, dir));
   });
 
-  app.listen(port, () => console.log(`Gitblog running on http://localhost:${port}`))
+  app.listen(port, () => console.log(`Gitblogger running on http://localhost:${port}`))
 }
 
 // ----------------------------------------------------------------
 // Helper functions
 // ----------------------------------------------------------------
+async function clone() {
+  const remote = 'https://github.com/siriusastrebe/gitblog.git';
+  const dir = './blog';
+  console.log(`Git - Clone ${remote} to ${dir}`)
+
+  await git.clone({
+    fs,
+    http,
+    dir: dir,
+    url: remote,
+    singleBranch: true
+  })
+}
+
+async function pull() {
+  const dir = './blog';
+  lastPull = new Date();
+  console.log(`Git - Pull ${dir}`);
+
+  await git.pull({
+    fs,
+    http,
+    dir: dir,
+    ref: 'master',
+    author: {name: 'siriusastrebe', email: ''},
+    singleBranch: true
+  })
+}
+
+async function poll() {
+  if (new Date() - lastPull > 60000) {
+    return await pull();
+  }
+}
 
 function HTMLFormat(posts, metadatas) {
   let html = "<!DOCTYPE html><html><body>";
 
-
   posts.forEach((post, i) => {
-    html += formatFile(post, metadatas[i].name);
+    html += formatFile(post, metadatas[i]);
   });
 
   html += "</body>";
@@ -51,7 +82,7 @@ function formatFile(contents, name) {
   const extension = name.split('.')[name.split('.').length - 1];
   switch (extension) {
     case 'md':
-      //return markdown.toHTML(contents);
+      return markdown.toHTML(contents);
     case 'html':
       return contents;
   }
