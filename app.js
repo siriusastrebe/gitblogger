@@ -8,6 +8,7 @@ const fs       = require('fs')
 
 let lastPull;
 
+// Fresh repository pull
 clone().then(pull).then(runServer);
 
 function runServer() {
@@ -21,7 +22,28 @@ function runServer() {
 
     const contents = await Promise.all(promises)
 
-    res.send(HTMLFormat(contents, dir));
+    res.send(HTMLFormat(contents));
+  });
+
+  app.get('/:blog', async (req, res) => {
+    const blog = req.params.blog;
+    const extension = blog.split('.')[1];
+
+    const promises = [];
+    if (extension) {
+      promises.push(fs.promises.readFile('./blog/blogs/' + blog, 'utf8'));
+    } else {
+      // Try opening both HTML and .md files
+      promises.push(fs.promises.readFile('./blog/blogs/' + blog + '.html', 'utf8'));
+      promises.push(fs.promises.readFile('./blog/blogs/' + blog + '.md', 'utf8'));
+    }
+
+    try {
+      const contents = await Promise.any(promises);
+      res.send(HTMLFormat([contents]));
+    } catch (e) {
+      res.sendStatus(404);
+    }
   });
 
   app.listen(port, () => console.log(`Gitblogger running on http://localhost:${port}`))
@@ -65,11 +87,12 @@ async function poll() {
   }
 }
 
-function HTMLFormat(posts, metadatas) {
+
+function HTMLFormat(posts) {
   let html = "<!DOCTYPE html><html><body>";
 
   posts.forEach((post, i) => {
-    html += formatFile(post, metadatas[i]);
+    html += formatFile(post);
   });
 
   html += "</body>";
@@ -78,12 +101,34 @@ function HTMLFormat(posts, metadatas) {
   return html;
 }
 
-function formatFile(contents, name) {
-  const extension = name.split('.')[name.split('.').length - 1];
-  switch (extension) {
-    case 'md':
-      return markdown.toHTML(contents);
-    case 'html':
-      return contents;
+function formatFile(contents) {
+  try {
+    return markdown.toHTML(contents);
+  } catch {
+    return contents;
   }
+}
+
+// ----------------------------------------------------------------
+// Shims
+// ----------------------------------------------------------------
+Promise.any = function (promises) {
+  return new Promise((resolve, reject) => {
+    let rejectCount = 0;
+    let resolved = false;
+    for (let i=0; i<promises.length; i++) {
+      const promise = promises[i];
+      promise.then((result) => {
+        if (!resolved) {
+          resolved = true;
+          resolve(result);
+        }
+      }).catch((e) => {
+        rejectCount = rejectCount + 1;
+        if (rejectCount === promises.length) {
+          reject(e)
+        }
+      });
+    }
+  });
 }
