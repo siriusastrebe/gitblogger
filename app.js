@@ -13,10 +13,15 @@ clone().then(pull).then(runServer);
 
 function runServer() {
   app.get('/', async (req, res) => {
+    const page = Number(req.params.page) || 0;
+
     await poll()
     const dir = await fs.promises.readdir('./blog/blogs/');
 
-    const promises = dir.map(async (d) => {
+    const sorted = dir.sort((a, b) => a < b ? 1 : -1);
+    newestSixPosts = sorted.slice(0 + page * 6, 6 + page * 6);
+
+    const promises = newestSixPosts.map(async (d) => {
       return fs.promises.readFile('./blog/blogs/' + d, 'utf8');
     });
 
