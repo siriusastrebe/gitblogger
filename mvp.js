@@ -16,31 +16,17 @@ function runServer() {
     const page = Number(req.params.page) || 0;
 
     await poll()
-    const dir = await fs.promises.readdir('./blog/posts/');
+    const dir = await fs.promises.readdir('./blog/posts');
 
     const sorted = dir.sort((a, b) => a < b ? 1 : -1);
-    newestSixPosts = sorted.slice(0 + page * 6, 6 + page * 6);
 
-    const promises = newestSixPosts.map(async (d) => {
+    const promises = sorted.map(async (d) => {
       return fs.promises.readFile('./blog/posts/' + d, 'utf8');
     });
 
     const contents = await Promise.all(promises);
 
     res.send(HTMLFormat(contents, dir));
-  });
-
-  app.get('/:filename', async (req, res) => {
-    const filename = req.params.filename;
-
-    await poll()
-
-    try {
-      contents = await fs.promises.readFile('./blog/posts/' + filename, 'utf8');
-      res.send(HTMLFormat([contents], [filename]));
-    } catch (e) {
-      res.sendStatus(404);
-    }
   });
 
   app.listen(port, () => console.log(`Gitblogger running on http://localhost:${port}`));
