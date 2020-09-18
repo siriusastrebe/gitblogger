@@ -1,4 +1,4 @@
-const markdown = require('markdown').markdown;
+const markdown = require('markdown-it');
 const express  = require('express');
 const app      = express();
 const port     = 3000;
@@ -29,7 +29,7 @@ function runServer() {
     res.send(HTMLFormat(contents, dir));
   });
 
-  app.listen(port, () => console.log(`Gitblogger running on http://localhost:${port}`));
+  app.listen(port, () => console.log(`blog running on http://localhost:${port}`));
 }
 
 // ----------------------------------------------------------------
@@ -78,14 +78,14 @@ function HTMLFormat(posts, filenames) {
   });
 
   html += "</body>";
-  html += "<style type=\"text/css\">body{margin:40px auto;max-width:800px;font-size:20px;color:#333;padding:0 10px;background:#FAFBFC}h1,h2,h3{line-height:1.2}pre{background:lightyellow;overflow:scroll;padding:0 20px}</style>";
+  html += "<style type=\"text/css\">body{margin:40px auto;max-width:800px;font-size:18px;color:#333;padding:0 10px;}h1,h2,h3{line-height:1.2}pre{background:lightyellow;overflow:scroll;padding:0 20px}</style>";
   html += "</html>";
   return html;
 }
 
 function formatFile(contents, filename) {
   if (filename.substring(filename.length - 3) === '.md') {
-    return markdown.toHTML(contents);
+    return markdown.render(contents);
   } else if (filename.substring(filename.length - 5) === '.html') {
     return contents;
   }
