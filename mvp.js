@@ -1,4 +1,4 @@
-const markdown = require('markdown-it');
+const markdown = require('markdown-it')();
 const express  = require('express');
 const app      = express();
 const port     = 3000;
@@ -78,7 +78,7 @@ function HTMLFormat(posts, filenames) {
   });
 
   html += "</body>";
-  html += "<style type=\"text/css\">body{margin:40px auto;max-width:800px;font-size:18px;color:#333;padding:0 10px;}h1,h2,h3{line-height:1.2}pre{background:lightyellow;overflow:scroll;padding:0 20px}</style>";
+  html += "<style type=\"text/css\">body{margin:40px auto;max-width:800px;font-size:18px;color:#333;padding:0 10px;}h1,h2,h3{line-height:1.2}pre{background:lightyellow;overflow:auto;padding:0 20px}</style>";
   html += "</html>";
   return html;
 }
